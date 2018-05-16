@@ -57,13 +57,15 @@ func dive(t *testing.T, path string, indirectElem reflect.Value, root reflect.Va
 			if elem.Field(i).Kind() == reflect.Struct {
 				fmt.Printf("[%s]Found struct dive\n", path)
 				dive(t, path+"."+elem.Type().Field(i).Name, elem.Field(i), root)
+				return
 			} else if elem.Field(i).Kind() == reflect.Slice {
 				fmt.Printf("[%s]Found slice dive\n", path)
 				for ii := 0; ii < elem.Field(i).Len(); ii++ {
-					newField := reflect.New(elem.Field(i).Index(ii).Type())
-					newField.Elem().Set(reflect.ValueOf(elem.Field(i).Index(ii).Interface()))
-					dive(t, fmt.Sprintf("%s.%s.%d", path, elem.Type().Field(i).Name, ii), newField.Elem(), root)
+					newField := reflect.New(elem.Field(i).Type())
+					newField.Elem().Set(reflect.ValueOf(elem.Field(i).Interface()))
+					dive(t, fmt.Sprintf("%s.%s.%d", path, elem.Type().Field(i).Name, ii), newField.Elem().Index(ii), root)
 				}
+				return
 			} else if elem.Field(i).Kind() == reflect.String {
 				fmt.Printf("[%s][Test] String\n", path)
 				elem.Field(i).SetString("")
