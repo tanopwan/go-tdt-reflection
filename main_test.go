@@ -62,7 +62,7 @@ func dive(t *testing.T, path string, indirectElem reflect.Value, root reflect.Va
 				fmt.Printf("[%s]Found slice dive\n", path)
 
 				for ii := 0; ii < elem.Field(i).Len(); ii++ {
-					dive(t, fmt.Sprintf("%s.%s.%d", path, elem.Type().Field(i).Name, ii), newSlice.Index(ii), root)
+					dive(t, fmt.Sprintf("%s.%s.%d", path, elem.Type().Field(i).Name, ii), elem.Field(i).Index(ii), root)
 				}
 				return
 			} else if elem.Field(i).Kind() == reflect.String {
