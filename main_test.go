@@ -23,8 +23,8 @@ var testDomains = []testDomain{
 		Edge:  4,
 	}), "header", "/path/to/resource1"},
 	{reflect.ValueOf(&m.MyShape{
-		Shapes: []m.Shape{m.Shape{Color: "Blue", Edge: 3}, m.Shape{Color: "Purple", Edge: 2}},
-		Shape:  m.Shape{Color: "Pink", Edge: 11},
+		Foos:  []m.Foo{{FooString: "foo1", Another: 1, Barfs: []m.Bar{{Barf: "B1"}}}, {FooString: "foo2", Another: 2}},
+		Shape: m.Shape{Color: "Pink", Edge: 11},
 	}), "header", "/path/to/resource2"},
 }
 
@@ -60,10 +60,9 @@ func dive(t *testing.T, path string, indirectElem reflect.Value, root reflect.Va
 				return
 			} else if elem.Field(i).Kind() == reflect.Slice {
 				fmt.Printf("[%s]Found slice dive\n", path)
+
 				for ii := 0; ii < elem.Field(i).Len(); ii++ {
-					newField := reflect.New(elem.Field(i).Type())
-					newField.Elem().Set(reflect.ValueOf(elem.Field(i).Interface()))
-					dive(t, fmt.Sprintf("%s.%s.%d", path, elem.Type().Field(i).Name, ii), newField.Elem().Index(ii), root)
+					dive(t, fmt.Sprintf("%s.%s.%d", path, elem.Type().Field(i).Name, ii), newSlice.Index(ii), root)
 				}
 				return
 			} else if elem.Field(i).Kind() == reflect.String {
@@ -77,7 +76,7 @@ func dive(t *testing.T, path string, indirectElem reflect.Value, root reflect.Va
 				return
 			}
 
-			fmt.Printf("[%s]testElem: %v, type: %s\n", path, elem, newElem.Type())
+			fmt.Printf("[%s]testElem: %v, type: %s, kind: %s\n", path, elem, newElem.Type(), newElem.Kind())
 
 			newRoot := reflect.New(root.Type())
 			newRoot.Elem().Set(reflect.ValueOf(root.Interface()))
@@ -97,7 +96,13 @@ func dive(t *testing.T, path string, indirectElem reflect.Value, root reflect.Va
 						fmt.Printf("[%s]found at node: %s\n", path, node)
 						if currentNode.FieldByName(node).Kind() == reflect.Slice {
 							n, _ := strconv.Atoi(nodes[index+1])
-							currentNode.FieldByName(node).Index(n).Set(elem)
+
+							newSlice := reflect.MakeSlice(elem.Field(i).Type(), elem.Field(i).Len(), elem.Field(i).Len())
+							reflect.Copy(newSlice, elem.Field(i))
+							newSlice.Index(n).Set(elem)
+
+							// currentNode.FieldByName(node).Index(n).Set(elem)
+							currentNode.FieldByName(node).Set(newSlice)
 						} else {
 							currentNode.FieldByName(node).Set(elem)
 						}
@@ -105,7 +110,13 @@ func dive(t *testing.T, path string, indirectElem reflect.Value, root reflect.Va
 					}
 
 					fmt.Printf("[%s]currentNode: %v, type: %s at index %d/%d\n", path, currentNode, currentNode.Type(), index, len(nodes)-1)
-					newCurrentNode := currentNode.FieldByName(node)
+					var newCurrentNode reflect.Value
+					if currentNode.Kind() == reflect.Slice {
+						n, _ := strconv.Atoi(node)
+						newCurrentNode = currentNode.Index(n)
+					} else {
+						newCurrentNode = currentNode.FieldByName(node)
+					}
 					currentNode = &newCurrentNode
 				}
 			}
